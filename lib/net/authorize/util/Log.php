@@ -65,7 +65,7 @@ class Log
             if(trim($sensitiveTag->pattern)) {
                 $inputPattern = $sensitiveTag->pattern;
             }
-            $pattern = "<" . $tag . ">(?:.*)". $inputPattern ."(?:.*)<\/" . $tag . ">";
+            $pattern = "<" . $tag . ">(?:.*?)". $inputPattern ."(?:.*?)<\/" . $tag . ">";
 			$pattern = $this->addDelimiterFwdSlash($pattern);
 
             if(trim($sensitiveTag->replacement)) {
@@ -77,6 +77,9 @@ class Log
             $replacements[$i]  = $replacement;
         }
         $maskedString = preg_replace($patterns, $replacements, $rawString);
+        if ($maskedString === null) {
+            $maskedString = '[REDACTED - XML masking failed due to PCRE error]';
+        }
         return $maskedString;
     }
 
