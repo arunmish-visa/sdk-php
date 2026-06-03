@@ -43,7 +43,9 @@ class Log
 	*/
 	private function addDelimiterFwdSlash($regexPattern)
 	{
-		return '/'.$regexPattern.'/u';
+		// SECURITY: 's' (dotall) flag ensures sensitive values spanning newlines are matched.
+		// 'u' enables Unicode mode for \p{N} patterns.
+		return '/'.$regexPattern.'/su';
 	}
 	
 	/**
@@ -79,6 +81,41 @@ class Log
         $maskedString = preg_replace($patterns, $replacements, $rawString);
         if ($maskedString === null) {
             $maskedString = '[REDACTED - XML masking failed due to PCRE error]';
+        }
+        return $maskedString;
+    }
+
+    /**
+     * Takes a JSON string and masks sensitive fields by key name.
+     * Handles the actual wire format used by the SDK (json_encode payloads).
+     *
+     * @param string $rawString     The JSON string.
+     *
+     * @return string       The string after masking sensitive JSON key values.
+     */
+    private function maskSensitiveJsonString($rawString){
+        $patterns = array();
+        $replacements = array();
+
+        foreach ($this->sensitiveXmlTags as $i => $sensitiveTag){
+            $key = preg_quote($sensitiveTag->tagName, '/');
+            $inputReplacement = "xxxx";
+
+            if(trim($sensitiveTag->replacement)) {
+                $inputReplacement = $sensitiveTag->replacement;
+            }
+
+            // Match JSON key-value patterns: "key":"value" or "key": "value"
+            // Handles escaped quotes within values via [^"\\]|\\.
+            $pattern = '/"' . $key . '"\s*:\s*"((?:[^"\\\\]|\\\\.)*)"/su';
+            $replacement = '"' . $sensitiveTag->tagName . '":"' . $inputReplacement . '"';
+
+            $patterns[$i] = $pattern;
+            $replacements[$i] = $replacement;
+        }
+        $maskedString = preg_replace($patterns, $replacements, $rawString);
+        if ($maskedString === null) {
+            $maskedString = '[REDACTED - JSON masking failed due to PCRE error]';
         }
         return $maskedString;
     }
@@ -241,12 +278,16 @@ class Log
         else { //$messageType == "string")
             $primtiveTypeAsString = strval($raw);
 
-            $maskedXml = $primtiveTypeAsString;
+            // SECURITY: Apply all masking layers — XML tags, JSON keys, and credit card patterns.
+            // The SDK wire format is JSON (ApiOperationBase sends json_encode), so JSON masking
+            // is the primary defense. XML masking is retained for backward compatibility.
+            $masked = $primtiveTypeAsString;
             if($messageType == "string") {
-                $maskedXml = $this->maskSensitiveXmlString($primtiveTypeAsString);
+                $masked = $this->maskSensitiveXmlString($masked);
+                $masked = $this->maskSensitiveJsonString($masked);
             }
             //mask credit card numbers
-            $message = $this->maskCreditCards($maskedXml);
+            $message = $this->maskCreditCards($masked);
         }
         return $message;
     }

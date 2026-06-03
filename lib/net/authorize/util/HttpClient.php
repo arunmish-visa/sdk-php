@@ -73,8 +73,10 @@ class HttpClient
         curl_setopt($curl_request, CURLOPT_SSL_VERIFYHOST, 2);
 
         $this->logger->info(sprintf(" Url: %s", $post_url));
-        // Do not log requests that could contain CC info.
-        $this->logger->info(sprintf("Request to AnetApi: \n%s", $xmlRequest));
+        // SECURITY: Do not log raw request body — it contains sensitive payment data
+        // (cardNumber, cardCode, transactionKey, accountNumber, expirationDate).
+        // Log only payload length for debugging purposes.
+        $this->logger->info(sprintf("Request to AnetApi: payloadLength=%d", strlen($xmlRequest)));
 
         if ($this->VERIFY_PEER) {
             curl_setopt($curl_request, CURLOPT_CAINFO, dirname(dirname(__FILE__)) . '/../../ssl/cert.pem');
@@ -93,7 +95,10 @@ class HttpClient
         {
             $this->logger->info("Sending http request via Curl");
             $xmlResponse = curl_exec($curl_request);
-            $this->logger->info("Response from AnetApi: $xmlResponse");
+            // SECURITY: Do not log raw response body — it may contain sensitive payment data.
+            // Log only response length and HTTP status for debugging purposes.
+            $httpCode = curl_getinfo($curl_request, CURLINFO_HTTP_CODE);
+            $this->logger->info(sprintf("Response from AnetApi: httpStatus=%d, responseLength=%d", $httpCode, strlen($xmlResponse ?: '')));
 
         } catch (\Exception $ex)
         {
