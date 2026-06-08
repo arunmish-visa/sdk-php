@@ -3,7 +3,7 @@ namespace net\authorize\api\constants;
 
 class ANetEnvironment
 {
-    const CUSTOM = "http://wwww.myendpoint.com";
+    const CUSTOM = "https://custom.endpoint.example";
     const SANDBOX = "https://apitest.authorize.net";
     const PRODUCTION = "https://api2.authorize.net";
 

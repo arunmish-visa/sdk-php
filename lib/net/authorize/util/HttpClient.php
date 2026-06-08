@@ -65,12 +65,21 @@ class HttpClient
         $xmlResponse = "";
 
         $post_url = $this->_getPostUrl();
+
+        // SECURITY: Enforce HTTPS — reject any non-TLS endpoint to prevent
+        // credential/cardholder-data transmission in cleartext (PCI DSS 4.1).
+        if (strpos($post_url, 'https://') !== 0) {
+            $this->logger->error("SECURITY: Refusing to send request — endpoint URL does not use HTTPS: " . parse_url($post_url, PHP_URL_SCHEME) . "://***");
+            return false;
+        }
+
         $curl_request = curl_init($post_url);
         curl_setopt($curl_request, CURLOPT_POSTFIELDS, $xmlRequest);
         curl_setopt($curl_request, CURLOPT_HEADER, 0);
         curl_setopt($curl_request, CURLOPT_TIMEOUT, 45);
         curl_setopt($curl_request, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($curl_request, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($curl_request, CURLOPT_SSL_VERIFYPEER, true);
 
         $this->logger->info(sprintf(" Url: %s", $post_url));
         // SECURITY: Do not log raw request body — it contains sensitive payment data
