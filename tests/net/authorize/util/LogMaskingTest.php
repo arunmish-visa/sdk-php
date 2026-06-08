@@ -221,4 +221,132 @@ class LogMaskingTest extends \PHPUnit\Framework\TestCase
         $this->assertStringNotContainsString('4111111111111111', $content);
         $this->assertStringNotContainsString('5500000000000004', $content);
     }
+
+    // === Object-Reflection Masking Path Tests (maskSensitiveProperties) ===
+
+    public function testMaskObjectPassword()
+    {
+        $obj = new \stdClass();
+        $obj->password = 'secretPass123';
+        $obj->name = 'testMerchant';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('secretPass123', $content);
+        $this->assertStringContainsString('xxxx', $content);
+        $this->assertStringContainsString('testMerchant', $content);
+    }
+
+    public function testMaskObjectSessionToken()
+    {
+        $obj = new \stdClass();
+        $obj->sessionToken = 'tok_abc123xyz789';
+        $obj->amount = '25.00';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('tok_abc123xyz789', $content);
+        $this->assertStringContainsString('xxxx', $content);
+        $this->assertStringContainsString('25.00', $content);
+    }
+
+    public function testMaskObjectAccessToken()
+    {
+        $obj = new \stdClass();
+        $obj->accessToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.secret';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9', $content);
+        $this->assertStringContainsString('xxxx', $content);
+    }
+
+    public function testMaskObjectClientKey()
+    {
+        $obj = new \stdClass();
+        $obj->clientKey = '7pK2Q3bZ9xR4mN6wY8vJ';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('7pK2Q3bZ9xR4mN6wY8vJ', $content);
+        $this->assertStringContainsString('xxxx', $content);
+    }
+
+    public function testMaskObjectFingerPrint()
+    {
+        $obj = new \stdClass();
+        $obj->fingerPrint = 'a1b2c3d4e5f6g7h8i9j0';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('a1b2c3d4e5f6g7h8i9j0', $content);
+        $this->assertStringContainsString('xxxx', $content);
+    }
+
+    public function testMaskObjectMobileDeviceId()
+    {
+        $obj = new \stdClass();
+        $obj->mobileDeviceId = 'DEVICE-UUID-12345-ABCDE';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('DEVICE-UUID-12345-ABCDE', $content);
+        $this->assertStringContainsString('xxxx', $content);
+    }
+
+    public function testMaskObjectTransactionKey()
+    {
+        $obj = new \stdClass();
+        $obj->transactionKey = '9Xp4Kz8mR2nQ5wLj';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('9Xp4Kz8mR2nQ5wLj', $content);
+        $this->assertStringContainsString('xxxx', $content);
+    }
+
+    public function testMaskObjectCardNumberWithLastFour()
+    {
+        $obj = new \stdClass();
+        $obj->cardNumber = '4111111111111111';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('4111111111111111', $content);
+        $this->assertStringContainsString('xxxx', $content);
+    }
+
+    public function testMaskNestedObjectMerchantAuth()
+    {
+        $merchantAuth = new \stdClass();
+        $merchantAuth->password = 'mySecretPassword';
+        $merchantAuth->transactionKey = 'txnKey123';
+        $merchantAuth->sessionToken = 'sessToken456';
+
+        $request = new \stdClass();
+        $request->merchantAuthentication = $merchantAuth;
+        $request->amount = '100.00';
+
+        $this->log->debug($request);
+        $content = $this->getLogContent();
+
+        $this->assertStringNotContainsString('mySecretPassword', $content);
+        $this->assertStringNotContainsString('txnKey123', $content);
+        $this->assertStringNotContainsString('sessToken456', $content);
+        $this->assertStringContainsString('100.00', $content);
+    }
+
+    public function testNonSensitiveObjectFieldsPreserved()
+    {
+        $obj = new \stdClass();
+        $obj->amount = '50.00';
+        $obj->description = 'Test transaction';
+        $obj->refId = 'REF-001';
+        $this->log->debug($obj);
+        $content = $this->getLogContent();
+
+        $this->assertStringContainsString('50.00', $content);
+        $this->assertStringContainsString('Test transaction', $content);
+        $this->assertStringContainsString('REF-001', $content);
+    }
 }

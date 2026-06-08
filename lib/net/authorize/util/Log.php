@@ -101,12 +101,6 @@ class Log
             $key = preg_quote($sensitiveTag->tagName, '/');
             $inputReplacement = "xxxx";
 
-            if(trim($sensitiveTag->replacement)) {
-                $inputReplacement = $sensitiveTag->replacement;
-            }
-
-            // Match JSON key-value patterns: "key":"value" or "key": "value"
-            // Handles escaped quotes within values via [^"\\]|\\.
             $pattern = '/"' . $key . '"\s*:\s*"((?:[^"\\\\]|\\\\.)*)"/su';
             $replacement = '"' . $sensitiveTag->tagName . '":"' . $inputReplacement . '"';
 
@@ -140,6 +134,9 @@ class Log
             $replacements[$i]  = $replacement;
         }
         $maskedString = preg_replace($patterns, $replacements, $rawString);
+        if ($maskedString === null) {
+            $maskedString = '[REDACTED - credit card masking failed due to PCRE error]';
+        }
         return $maskedString;
     }
 	
